@@ -14,8 +14,27 @@
 Scene::Scene()
 {
     suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
-    blinnphong = std::make_unique<ew::Shader>("assets/shaders/default.vs", "assets/shaders/default.fs");
+    blinnphong = std::make_unique<ew::Shader>(
+        "assets/shaders/default.vs",
+        "assets/shaders/blinnphong.fs"
+    );
+
+    light = {
+        .brightness = 0.1f,
+        .color = { 0.1f, 0.1f, 0.1f },
+        .position = { 2.0f, 0.0f, 1.0f },
+    };
+
 }
+
+struct{
+    float shinniness = 128.9;
+    glm::vec3 ambent =  glm::vec3(0.0f);
+    glm::vec3 diffuse =  glm::vec3(0.0f);
+    glm::vec3 specular =  glm::vec3(0.0f);
+} debug;
+
+
 
 Scene::~Scene()
 {
@@ -28,7 +47,6 @@ void Scene::Update(float dt)
     /* body */
 }
 
-auto matrix = glm::mat4(1.0f);
 
 void Scene::Render(void)
 {
@@ -45,9 +63,20 @@ void Scene::Render(void)
     blinnphong->use();
 
     // scene matrices
-    blinnphong->setMat4("model", matrix);
+    blinnphong->setMat4("model", glm::mat4(1.0f));
     blinnphong->setMat4("view_proj", view_proj);
+
+
+    blinnphong->setVec3("light.color", light.color);
     blinnphong->setVec3("camera_position", camera.position);
+    blinnphong->setVec3("light.postion", light.position);
+    blinnphong->setVec3("materal.ambeint", debug.ambent);
+    blinnphong->setVec3("materal.diffuse", debug.diffuse);
+    blinnphong->setVec3("materal.specular", debug.specular);
+    blinnphong->setFloat("materal.shinniness", debug.shinniness);
+
+    
+
 
     // draw suzanne
     suzanne->draw();
@@ -65,13 +94,20 @@ void Scene::Debug(void)
     
     ImGuizmo::DrawGrid(view, proj, glm::value_ptr(m), 100.0f);
 
+    auto matrix = glm::translate(glm::mat4(1.0f), light.position);
+
     ImGuizmo::Manipulate(
         view,
         proj,
-        ImGuizmo::ROTATE,
+        ImGuizmo::TRANSLATE,
         ImGuizmo::WORLD,
         glm::value_ptr(matrix)
     );
+
+    if(ImGuizmo::IsUsing())
+    {
+        light.position = glm::vec3(matrix[3]);
+    }
 
     cameracontroller.Debug();
 
@@ -79,6 +115,12 @@ void Scene::Debug(void)
 
     ImGui::Checkbox("Paused", &time.paused);
     ImGui::SliderFloat("Time Factor", &time.factor, 0.0f, 10.0f);
+    ImGui::ColorEdit3("Light Color", &light.color[0]);
+    ImGui::DragFloat("shinniness", &debug.shinniness, 1.0f, 0.0f, 128.9f);
+    ImGui::ColorEdit3("Materal Ambeint", &debug.ambent[0]);
+    ImGui::ColorEdit3("Materal Diffuse", &debug.diffuse[0]);
+    ImGui::ColorEdit3("Materal Specular", &debug.specular[0]);
+
 
     /* build debug ui here */
 
