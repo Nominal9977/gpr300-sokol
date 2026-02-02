@@ -21,7 +21,7 @@ in vec3 vs_position;
 in vec3 vs_normal;
 in vec2 vs_texcoord;
 
-uniform texture0 texture0
+//uniform texture0 texture0
 uniform Light light;
 uniform vec3 camera_position;
 uniform Materail materal;
@@ -49,9 +49,7 @@ void main()
 {
   vec3 ambient = vec3(1.0);
   vec3 color = blinnphong(vs_normal, vs_position, light, materal)+ambient * 0.5;
-
-   vec3 object_color = texture(texture0, vs_texcoord).rgb;
-
+  //vec3 object_color = texture(texture0, vs_texcoord).rgb;
   vec3 object_color = vs_normal.rgb *0.5 +0.5;
   vec3 final_color = object_color*color;
   FragColor = vec4(final_color, 1.0);
