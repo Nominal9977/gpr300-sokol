@@ -14,11 +14,11 @@
 Scene::Scene()
 {
     suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
-    blinnphong = std::make_unique<ew::Shader>(
+    toon = std::make_unique<ew::Shader>(
         "assets/shaders/default.vs",
-        "assets/shaders/blinnphong.fs"
+        "assets/shaders/toon.fs"
     );
-
+    texture = std::make_unique<ew::Texture>("assets/textures/ZAtoon.png");
     light = {
         .brightness = 0.1f,
         .color = { 0.1f, 0.1f, 0.1f },
@@ -60,22 +60,26 @@ void Scene::Render(void)
     glEnable(GL_DEPTH_TEST);
     // glDisable(GL_DEPTH_TEST);
 
-    blinnphong->use();
+    auto index = 0;
+    glActiveTexture(GL_TEXTURE0 + index);
+    glBindTexture(GL_TEXTURE_2D, texture->getID());
+
+    toon->use();
 
     // scene matrices
-    blinnphong->setMat4("model", glm::mat4(1.0f));
-    blinnphong->setMat4("view_proj", view_proj);
+    toon->setMat4("model", glm::mat4(1.0f));
+    toon->setMat4("view_proj", view_proj);
+
+    toon->setInt("zatoon", index);
 
 
-    blinnphong->setVec3("light.color", light.color);
-    blinnphong->setVec3("camera_position", camera.position);
-    blinnphong->setVec3("light.postion", light.position);
-    blinnphong->setVec3("materal.ambeint", debug.ambent);
-    blinnphong->setVec3("materal.diffuse", debug.diffuse);
-    blinnphong->setVec3("materal.specular", debug.specular);
-    blinnphong->setFloat("materal.shinniness", debug.shinniness);
-
-    
+    toon->setVec3("light.color", light.color);
+    toon->setVec3("camera_position", camera.position);
+    toon->setVec3("light.postion", light.position);
+    toon->setVec3("materal.ambeint", debug.ambent);
+    toon->setVec3("materal.diffuse", debug.diffuse);
+    toon->setVec3("materal.specular", debug.specular);
+    toon->setFloat("materal.shinniness", debug.shinniness);
 
 
     // draw suzanne
@@ -91,7 +95,7 @@ void Scene::Debug(void)
     glm::mat4 m{1.0f};
     auto *view = glm::value_ptr(camera.View());
     auto *proj = glm::value_ptr(camera.Projection());
-    
+
     ImGuizmo::DrawGrid(view, proj, glm::value_ptr(m), 100.0f);
 
     auto matrix = glm::translate(glm::mat4(1.0f), light.position);
