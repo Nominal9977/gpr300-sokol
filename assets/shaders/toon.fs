@@ -9,6 +9,11 @@ struct Light{
   vec3 postion;
 };
 
+struct Pallet{
+vec3 color1;
+vec3 color2;
+};
+
 struct Materail{
   vec3 ambeint;
   vec3 diffuse;
@@ -23,6 +28,7 @@ in vec2 vs_texcoord;
 
 uniform Light light;
 uniform vec3 camera_position;
+uniform Pallet pal;
 uniform Materail materal;
 uniform sampler2D zatoon;
 
@@ -35,16 +41,20 @@ vec3 toon(vec3 normal, vec3 frag_postion, Light light, Materail materal) {
 
     //materal lighting 
 
-    float NdotL =  max(dot(normal, light_dir), 0.0);
-    float NdotH = pow(max(dot(normal, half_dir), 0.0), materal.shinniness);
+    float NdotL =  (dot(normal, light_dir)+ 1.0) *0.5;
+    float NdotH = max(dot(normal, half_dir), 0.0);
+
+    
 
 
     vec3 gradint = texture(zatoon, vec2(NdotL, NdotL)).rgb;
+
+    vec3 light_color = mix(pal.color2, pal.color1, gradint);
     // vec3 diffuse = NdotL * materal.diffuse;
     // vec3 specular =  light.color * NdotH * materal.specular;
 
     // vec3 lighting =  diffuse + vec3(specular);
-    return  (gradint * light.color);
+    return  light_color;
 }
 
 void main()

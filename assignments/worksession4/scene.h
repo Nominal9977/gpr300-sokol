@@ -3,6 +3,7 @@
 // batteries
 #include "batteries/scene.h"
 #include "batteries/lights.h"
+#include "batteries/opengl.h"
 
 // ew
 #include "ew/model.h"
@@ -24,6 +25,15 @@ class Scene final : public batteries::Scene
     std::unique_ptr<ew::Shader> toon;
     batteries::light_t light;
     std::unique_ptr<ew::Texture> texture;
+
+
+    struct {
+      glm::vec3 color1;
+      glm::vec3 color2;
+    } pallet;
+
+    GLuint fbo;
+    GLuint fbo_texture;
 
 
 };
