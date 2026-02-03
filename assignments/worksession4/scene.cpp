@@ -1,5 +1,4 @@
 #include "scene.h"
-
 // imgui
 #include "imgui/imgui.h"
 #include "imguizmo/imguizmo.h"
@@ -10,6 +9,7 @@
 
 // batteries
 #include "batteries/opengl.h"
+#include <iostream>
 
 Scene::Scene()
 {
@@ -21,9 +21,35 @@ Scene::Scene()
     texture = std::make_unique<ew::Texture>("assets/textures/ZAtoon.png");
     light = {
         .brightness = 0.1f,
-        .color = { 0.1f, 0.1f, 0.1f },
+        .color = { 1.0f, 1.0f, 1.0f },
         .position = { 2.0f, 0.0f, 1.0f },
     };
+
+
+    // frameBuffer setup
+
+    glCreateFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    {
+        //create texture
+        glGenTextures(1, &fbo_texture);
+        glBindTexture(GL_TEXTURE_2D, fbo_texture);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);  
+    }
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture, 0); 
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+        std::cout<<"Error no frame buffer";
+        return;
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+ 
 
 }
 
@@ -38,6 +64,7 @@ struct{
 
 Scene::~Scene()
 {
+    glDeleteFramebuffers(1, &fbo);
 }
 
 void Scene::Update(float dt)
@@ -50,40 +77,53 @@ void Scene::Update(float dt)
 
 void Scene::Render(void)
 {
-    const auto view_proj = camera.Projection() * camera.View();
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // we're not using the stencil buffer now
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    {
 
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-    glEnable(GL_DEPTH_TEST);
-    // glDisable(GL_DEPTH_TEST);
-
-    auto index = 0;
-    glActiveTexture(GL_TEXTURE0 + index);
-    glBindTexture(GL_TEXTURE_2D, texture->getID());
-
-    toon->use();
-
-    // scene matrices
-    toon->setMat4("model", glm::mat4(1.0f));
-    toon->setMat4("view_proj", view_proj);
-
-    toon->setInt("zatoon", index);
+        
+        const auto view_proj = camera.Projection() * camera.View();
 
 
-    toon->setVec3("light.color", light.color);
-    toon->setVec3("camera_position", camera.position);
-    toon->setVec3("light.postion", light.position);
-    toon->setVec3("materal.ambeint", debug.ambent);
-    toon->setVec3("materal.diffuse", debug.diffuse);
-    toon->setVec3("materal.specular", debug.specular);
-    toon->setFloat("materal.shinniness", debug.shinniness);
+            glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_BACK);
+            glEnable(GL_DEPTH_TEST);
+            // glDisable(GL_DEPTH_TEST);
+
+            auto index = 0;
+            glActiveTexture(GL_TEXTURE0 + index);
+            glBindTexture(GL_TEXTURE_2D, texture->getID());
+
+            toon->use();
+
+            // scene matrices
+            toon->setMat4("model", glm::mat4(1.0f));
+            toon->setMat4("view_proj", view_proj);
+
+            toon->setInt("zatoon", index);
 
 
-    // draw suzanne
-    suzanne->draw();
+            toon->setVec3("light.color", light.color);
+            toon->setVec3("camera_position", camera.position);
+            toon->setVec3("light.postion", light.position);
+            toon->setVec3("materal.ambeint", debug.ambent);
+            toon->setVec3("materal.diffuse", debug.diffuse);
+            toon->setVec3("materal.specular", debug.specular);
+
+            toon->setVec3("pal.color1", {1.0f, 0.6f, 0.2f});
+            toon->setVec3("pal.color2", {1.0f, 0.23f, 0.9f});
+            toon->setFloat("materal.shinniness", debug.shinniness);
+
+
+            // draw suzanne
+            suzanne->draw();
+            
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void Scene::Debug(void)
@@ -127,6 +167,11 @@ void Scene::Debug(void)
 
 
     /* build debug ui here */
+
+    ImGui::Image(
+        (void*)(intptr_t)fbo_texture,
+        ImVec2(400, 300),
+        ImVec2(0, 1), ImVec2(1, 0));
 
     ImGui::End();
 }
