@@ -18,10 +18,11 @@ Scene::Scene()
         "assets/shaders/default.vs",
         "assets/shaders/blinnphong.fs"
     );
+    texture = std::make_unique<ew::Texture>("assets/textures/Brick.png");
 
     light = {
         .brightness = 0.1f,
-        .color = { 0.1f, 0.1f, 0.1f },
+        .color = { 1.0f, 1.0f, 1.0f },
         .position = { 2.0f, 0.0f, 1.0f },
     };
 
@@ -29,8 +30,8 @@ Scene::Scene()
 
 struct{
     float shinniness = 128.9;
-    glm::vec3 ambent =  glm::vec3(0.0f);
-    glm::vec3 diffuse =  glm::vec3(0.0f);
+    glm::vec3 ambent =  {0.3f , 0.56f, 0.74f};
+    glm::vec3 diffuse =  {0.6f , 0.2f, 0.74f};
     glm::vec3 specular =  glm::vec3(0.0f);
 } debug;
 
@@ -60,11 +61,18 @@ void Scene::Render(void)
     glEnable(GL_DEPTH_TEST);
     // glDisable(GL_DEPTH_TEST);
 
+
+     auto index = 0;
+     glActiveTexture(GL_TEXTURE0 + index);
+     glBindTexture(GL_TEXTURE_2D, texture->getID());
+
     blinnphong->use();
 
     // scene matrices
     blinnphong->setMat4("model", glm::mat4(1.0f));
     blinnphong->setMat4("view_proj", view_proj);
+
+    blinnphong->setInt("tex", index);
 
 
     blinnphong->setVec3("light.color", light.color);
