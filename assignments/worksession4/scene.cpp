@@ -11,21 +11,73 @@
 #include "batteries/opengl.h"
 #include <iostream>
 
+struct FullScreenQuad
+{
+    GLuint vao;
+    GLuint vbo;
+
+    void Initialize()
+    {
+        float vertices[] = {
+            // pos (x, y),
+            // texcoord (u, v)
+            // triangle 1
+            -1.0f, 1.0f, 0.0f, 1.0f,   
+            -1.0f, -1.0f, 0.0f, 0.0f,
+            1.0f, -1.0f, 1.0f, 0.0f,
+
+            // triangle 2
+            -1.0f, 1.0f, 0.0f, 1.0f,
+            1.0f, -1.0f, 1.0f, 0.0f,
+            1.0f, 1.0f, 1.0f, 1.0f,
+        };
+
+        glGenVertexArrays(1, &vao);
+        glGenBuffers(1, &vbo);
+
+        glBindVertexArray(vao);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), &vertices, GL_STATIC_DRAW);
+
+        // pos (x, y),
+        // texcoord (u, v)
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(sizeof(float) * 2));
+
+        // always last.
+        glBindVertexArray(0);
+    }
+};
+FullScreenQuad fullscreen;
+
 Scene::Scene()
 {
+
+    glEnable(GL_DEPTH_TEST);
     suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
+    
     toon = std::make_unique<ew::Shader>(
-        "assets/shaders/default.vs",
+        "assets/shaders/defualt.vs",
         "assets/shaders/toon.fs"
     );
+
+    default_pp =  std::make_unique<ew::Shader>(
+        "assets/shaders/fullscreen.vs",
+        "assets/shaders/blur.fs");
     texture = std::make_unique<ew::Texture>("assets/textures/ZAtoon.png");
+
+
     light = {
         .brightness = 0.1f,
         .color = { 1.0f, 1.0f, 1.0f },
         .position = { 2.0f, 0.0f, 1.0f },
     };
 
-
+    fullscreen.Initialize();
     // frameBuffer setup
 
     glCreateFramebuffers(1, &fbo);
@@ -35,13 +87,26 @@ Scene::Scene()
         glGenTextures(1, &fbo_texture);
         glBindTexture(GL_TEXTURE_2D, fbo_texture);
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        //Create 800/600 render texture with 8 unsigned bytes
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, 800, 600, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);  
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture, 0);
+
+        //Create depth texture
+        glGenTextures(1, &fbo_depth);
+        glBindTexture(GL_TEXTURE_2D, fbo_depth);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, 800, 600, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, fbo_depth, 0);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture, 0); 
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	{
         std::cout<<"Error no frame buffer";
@@ -53,11 +118,14 @@ Scene::Scene()
 
 }
 
+
+
 struct{
     float shinniness = 128.9;
     glm::vec3 ambent =  glm::vec3(0.0f);
     glm::vec3 diffuse =  glm::vec3(0.0f);
     glm::vec3 specular =  glm::vec3(0.0f);
+    float strength = 1.0f;
 } debug;
 
 
@@ -77,8 +145,8 @@ void Scene::Update(float dt)
 
 void Scene::Render(void)
 {
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // we're not using the stencil buffer now
+//     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+//     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // we're not using the stencil buffer now
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     {
 
@@ -124,6 +192,20 @@ void Scene::Render(void)
             
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    default_pp -> use();
+    default_pp -> setInt("screen", 0);
+    default_pp -> setFloat("strength", debug.strength);
+
+    glDisable(GL_DEPTH_TEST);
+    
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glBindVertexArray(fullscreen.vao);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, fbo_texture);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 void Scene::Debug(void)
@@ -159,6 +241,7 @@ void Scene::Debug(void)
 
     ImGui::Checkbox("Paused", &time.paused);
     ImGui::SliderFloat("Time Factor", &time.factor, 0.0f, 10.0f);
+    ImGui::SliderFloat("Blur Stenght", &debug.strength, 0.0f, 300.0f);
     ImGui::ColorEdit3("Light Color", &light.color[0]);
     ImGui::DragFloat("shinniness", &debug.shinniness, 1.0f, 0.0f, 128.9f);
     ImGui::ColorEdit3("Materal Ambeint", &debug.ambent[0]);
@@ -170,6 +253,11 @@ void Scene::Debug(void)
 
     ImGui::Image(
         (void*)(intptr_t)fbo_texture,
+        ImVec2(400, 300),
+        ImVec2(0, 1), ImVec2(1, 0));
+
+    ImGui::Image(
+        (void*)(intptr_t)fbo_depth,
         ImVec2(400, 300),
         ImVec2(0, 1), ImVec2(1, 0));
 

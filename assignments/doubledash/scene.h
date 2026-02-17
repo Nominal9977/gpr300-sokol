@@ -3,7 +3,6 @@
 // batteries
 #include "batteries/scene.h"
 #include "batteries/lights.h"
-#include "batteries/opengl.h"
 
 // ew
 #include "ew/model.h"
@@ -22,23 +21,14 @@ class Scene final : public batteries::Scene
 
   private:
     std::unique_ptr<ew::Model> suzanne;
-    std::unique_ptr<ew::Shader> toon;
-
-     std::unique_ptr<ew::Shader> default_pp;
-
-    batteries::light_t light;
+    std::unique_ptr<ew::Shader> water;
     std::unique_ptr<ew::Texture> texture;
+    batteries::light_t light;
 
-    struct {
-      glm::vec3 color1;
-      glm::vec3 color2;
-    } pallet;
+    ew::Mesh plane;
 
-    GLuint fbo;
-    GLuint fbo_texture;
-    GLuint fbo_depth;
-
-
-
+    std::unique_ptr<ew::Texture> wave_spec;
+    std::unique_ptr<ew::Texture> wave_tex;
+    std::unique_ptr<ew::Texture> wave_warp;
 
 };
