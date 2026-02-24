@@ -22,14 +22,25 @@ struct Materail {
 in vec3 vs_position;
 in vec3 vs_normal;
 in vec2 vs_texcoord;
-in vec4 light_project;
+in vec4 vs_light_proj_pos;
 
 uniform Light light;
 uniform vec3 camera_position;
 uniform Pallet pal;
 uniform Materail materal;
 uniform sampler2D zatoon;
+uniform vec3 light_color;
 
+float shadowCalculation(vec4 fragPosLightSpace)
+{
+    vec3 proj_cords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+
+    float closest = texture(shadow, proj_cords.xyz);
+    float current = proj_coords.z;
+    float shadow = 0.25;
+
+    return shadow;
+}
 
 vec3 toon(vec3 normal, vec3 frag_position)
 {
@@ -47,6 +58,10 @@ vec3 toon(vec3 normal, vec3 frag_position)
 
 void main()
 {
-    vec3 color = toon(vs_normal, vs_position);
-    FragColor = vec4(color, 1.0);
+    vec3 light_color = toon(vs_normal, vs_position);
+    float shadow = shadowCalculation(vs_light_proj_pos);
+    light_color *= (1.0-shadow);
+    
+
+    FragColor = vec4(light_color, 1.0);
 }
