@@ -1,13 +1,12 @@
-#version 410
+#version 410 core
 
-layout(location=0) in vec3 in_postion;
-
+layout(location=0) in vec3 aPos;
 
 uniform mat4 model;
-uniform mat4 light_view_projection;
+uniform mat4 light_view_proj; 
 
 void main()
 {
-    vec4 worldPos = model* vec4(in_postion, 1.0);
- gl_Position = light_view_projection * worldPos;
+    vec4 worldPos = model * vec4(aPos, 1.0);
+    gl_Position = light_view_proj * worldPos;
 }
