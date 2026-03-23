@@ -81,6 +81,8 @@ static struct
     glm::vec3 diffuse  = glm::vec3(1.0f);
     glm::vec3 specular = glm::vec3(0.2f);
 
+    float bais =0;
+
     float boxBlurStrength = 1.0f;       
     float sharpenStrength = 1.0f;        
     float pixelSize = 12.0f;       
@@ -122,7 +124,7 @@ Scene::Scene()
     suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
 
     toonShader = std::make_unique<ew::Shader>(
-        "assets/shaders/default.vs",
+        "assets/shaders/default_shadow.vs",
         "assets/shaders/worksesstion/toon_shadow.fs"
     );
 
@@ -258,15 +260,15 @@ void Scene::Update(float dt)
 void Scene::Render(void)
 {
 
-     glBindFramebuffer(GL_FRAMEBUFFER, Shadow_fbo);
+    const auto light_project = glm::ortho(-10.0f, +10.0f, -10.0f, +10.0f, 0.1f, 100.0f);
+    const auto light_view = glm::lookAt(light.position, glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0));
+    const auto light_view_proj = light_project * light_view;
+
+
+    glBindFramebuffer(GL_FRAMEBUFFER, Shadow_fbo);
     {
-
-        const auto light_project = glm::ortho(-10.0f, +10.0f, -10.0f, +10.0f, 0.1f, 100.0f);
-        const auto light_view = glm::lookAt(light.position, glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0));
-        const auto light_view_proj = light_project * light_view;
-
         glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
+        glCullFace(GL_FRONT);
         glEnable(GL_DEPTH_TEST);
 
         glViewport(0,0,800,600);
@@ -278,6 +280,10 @@ void Scene::Render(void)
         depth->setMat4("light_view_proj", light_view_proj);
 
         suzanne->draw();
+
+        const auto plane_mat = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, 0.0));
+        depth->setMat4("model", plane_mat);
+        plane.draw();
     }
     glBindFramebuffer(GL_FRAMEBUFFER,0);
     //Susane
@@ -293,18 +299,19 @@ void Scene::Render(void)
         glCullFace(GL_BACK);
         glEnable(GL_DEPTH_TEST);
 
-        glActiveTexture(GL_TEXTURE);
+        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture->getID());
 
         
 
         glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texture->getID()); //shodow depth
+        glBindTexture(GL_TEXTURE_2D, shadow_depth);
 
         toonShader->use();
 
         toonShader->setMat4("model", glm::mat4(1.0f));
         toonShader->setMat4("view_proj", view_proj);
+        toonShader->setMat4("light_view_proj", light_view_proj);
         toonShader->setInt("shadowMap" , 1);
 
         toonShader->setInt("zatoon", 0);
@@ -324,6 +331,7 @@ void Scene::Render(void)
         toonShader->setVec3("materal.specular",  debug.specular);
         toonShader->setFloat("materal.shinniness", debug.shininess);
         toonShader->setVec3("light.postion", light.position);
+        toonShader->setFloat("bais", debug.bais);
 
         toonShader->setVec3("pal.color1", { 1.0f, 0.6f, 0.2f });
         toonShader->setVec3("pal.color2", { 1.0f, 0.23f, 0.9f });
@@ -454,6 +462,7 @@ void Scene::Debug(void)
     ImGui::Checkbox("Paused", &time.paused);
     ImGui::SliderFloat("Time Factor", &time.factor, 0.0f, 10.0f);
     ImGui::ColorEdit3("Light Color", &light.color[0]);
+    ImGui::SliderFloat("Shadow Bais", &debug.bais, -1.0, 1.0);
 
     const char* postNames[] = {
         "None",

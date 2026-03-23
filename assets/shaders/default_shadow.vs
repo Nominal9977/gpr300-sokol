@@ -1,4 +1,4 @@
-#version 420 core
+#version 410
 
 layout(location=0) in vec3 aPos;
 layout(location=1) in vec3 aNormal;
@@ -10,15 +10,17 @@ uniform mat4 light_view_proj;
 
 out vec3 vs_position;
 out vec3 vs_normal;
-out vec2 vs_texcoord;
+//out vec2 vs_texcoord;
 out vec4 vs_light_proj_pos;
 
 void main()
 {
-    vs_position = vec3(model * vec4(in_postion, 1.0));
-    vs_normal   = mat3(transpose(inverse(model))) * aNormal;
-    vs_texcoord = aUV;
+    vs_position = vec3(model * vec4(aPos, 1.0));
+
+    vs_normal = aNormal;
+    //vs_texcoord = aUV;
 
     vs_light_proj_pos = light_view_proj * vec4(vs_position, 1.0);
-    gl_Position = view_proj * worldPos;   
+    gl_Position = view_proj* vec4(vs_position, 1.0);
+
 }

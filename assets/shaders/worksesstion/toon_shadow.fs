@@ -1,4 +1,4 @@
-#version 420 core
+#version 410
 
 out vec4 FragColor;
 
@@ -14,12 +14,13 @@ struct Pallet {
 
 in vec3 vs_position;
 in vec3 vs_normal;
-in vec2 vs_texcoord;
+// in vec2 vs_texcoord;
 in vec4 vs_light_proj_pos;
 
 uniform Light light;
 uniform vec3 camera_position;
 uniform Pallet pal;
+uniform float bais;
 
 uniform sampler2D zatoon;     
 uniform sampler2D shadowMap;  
@@ -31,22 +32,13 @@ float shadowCalculation(vec4 fragPosLightSpace)
 
     projCoords = projCoords * 0.5 + 0.5;
 
-    // If outside the shadow map, treat as not in shadow
-    if (projCoords.x < 0.0 || projCoords.x > 1.0 ||
-        projCoords.y < 0.0 || projCoords.y > 1.0 ||
-        projCoords.z < 0.0 || projCoords.z > 1.0)
-    {
-        return 0.0;
-    }
+    float Colosest_depth = texture(shadowMap, projCoords.xy).r;
+    float current_depth = projCoords.z;
 
-    float closestDepth = texture(shadowMap, projCoords.xy).r;
-    float currentDepth = projCoords.z;
+    float shodow = (current_depth - bais > Colosest_depth) ? 1.0 : 0.0;
 
-    // Simple bias to reduce shadow acne
-    float bias = 0.0015;
+    return shodow;
 
-    // 1.0 = in shadow, 0.0 = lit
-    return (currentDepth - bias > closestDepth) ? 1.0 : 0.0;
 }
 
 vec3 toon(vec3 normal, vec3 frag_position)
