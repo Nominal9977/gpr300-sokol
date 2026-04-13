@@ -35,4 +35,5 @@
 		"valarray": "cpp",
 		"*.inc": "cpp"
 	},
+	"dotnet.defaultSolution": "libs/assimp/samples/SimpleOpenGL/SimpleOpenGL.sln",
 }

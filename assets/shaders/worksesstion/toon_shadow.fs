@@ -14,7 +14,7 @@ struct Pallet {
 
 in vec3 vs_position;
 in vec3 vs_normal;
-// in vec2 vs_texcoord;
+in vec2 vs_texcoord;
 in vec4 vs_light_proj_pos;
 
 uniform Light light;
