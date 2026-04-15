@@ -189,11 +189,13 @@ Scene::Scene()
     suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
     Land = std::make_unique<ew::Model>("assets/models/landscape.obj");
     geometry = std::make_unique<ew::Shader>("assets/shaders/deferred/geometry.vs", "assets/shaders/deferred/geometry.fs");
+    water = std::make_unique<ew::Shader>("assets/shaders/deferred/water.vs", "assets/shaders/deferred/water.fs");
     blinnphong = std::make_unique<ew::Shader>("assets/shaders/deferred/blinnphong.vs", "assets/shaders/deferred/blinnphong.fs");
     noprocess = std::make_unique<ew::Shader>("assets/shaders/deferred/fullscreen.vs", "assets/shaders/deferred/fullscreen.fs");
     lightsphere = std::make_unique<ew::Shader>("assets/shaders/deferred/light.vs", "assets/shaders/deferred/light.fs");
     
     sphere.load(ew::createSphere(1.0f, 8));
+    plane.load(ew::createPlane(60.0f, 60.0f, 1));
 
     ambient = {
         .intensity = 1.0f,
@@ -266,10 +268,19 @@ void Scene::Render(void)
         geometry->setMat4("model", glm::mat4(1.0f));
         suzanne->draw();
 
-        // Draw land flat at ground level
-        glm::mat4 land_model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f));
+        glm::mat4 land_model = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)), glm::vec3(3.0f));
         geometry->setMat4("model", land_model);
         Land->draw();
+
+        water->use();
+        water->setMat4("view_proj", view_proj);
+        water->setFloat("material.ambient", 0.3f);
+        water->setFloat("material.diffuse", 0.6f);
+        water->setFloat("material.specular", 0.9f);
+        water->setFloat("material.shininess", 0.9f);
+        glm::mat4 plane_model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.521f, 0.0f));
+        water->setMat4("model", plane_model);
+        plane.draw();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -318,8 +329,11 @@ void Scene::Render(void)
 
     {
 
-        noprocess -> use();
-        noprocess ->setInt("screen", 0);
+        noprocess->use();
+        noprocess->setInt("screen", 0);
+        noprocess->setInt("g_albedo", 1);
+        noprocess->setVec3("ambient_color", ambient.color);
+        noprocess->setFloat("ambient_strength", ambient.intensity);
 
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
@@ -327,12 +341,13 @@ void Scene::Render(void)
         glCullFace(GL_BACK);
 
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
-
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glBindVertexArray(fullscreen_quad.vao);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, lightvolumebuffer.color);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, framebuffer.albedo);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.fbo);
@@ -344,31 +359,6 @@ void Scene::Render(void)
         
     }
 
-    {
-        lightsphere ->use();
-        lightsphere->setMat4("view_proj", view_proj);
-
-        glDisable(GL_BLEND);
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_CULL_FACE);
-        glCullFace(GL_BACK);
-
-
-        auto i = 0;
-        for (auto x = -debug.width; x <= debug.width; x++)
-        {
-            for (auto y = -debug.width; y <= debug.width; y++, i++)
-            {
-                auto sphere_mat4 = glm::translate(glm::mat4(1.0f), light_instances[i].position);
-                lightsphere->setMat4("model", sphere_mat4);
-                lightsphere->setVec3("color", light_instances[i].color);
-
-                // Draw the object
-                sphere.draw();
-            }
-        }
-
-    }
 }
 
 void Scene::Debug(void)
