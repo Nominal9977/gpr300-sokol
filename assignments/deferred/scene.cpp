@@ -169,6 +169,39 @@ struct LighVolumebuffer
     }
 } lightvolumebuffer;
 
+struct WaterBuffer
+{
+    GLuint fbo;
+    GLuint color;
+    GLuint depth;
+
+    void Initialize()
+    {
+        glGenFramebuffers(1, &fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+        glGenTextures(1, &color);
+        glBindTexture(GL_TEXTURE_2D, color);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, kFramebufferWidth, kFramebufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color, 0);
+
+        glGenTextures(1, &depth);
+        glBindTexture(GL_TEXTURE_2D, depth);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, kFramebufferWidth, kFramebufferHeight, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            printf("Water buffer incomplete\n");
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+} reflectionbuffer, refractionbuffer;
+
+
 struct Material
 {
     float ambient = 1.0f;
@@ -190,6 +223,7 @@ Scene::Scene()
     Land = std::make_unique<ew::Model>("assets/models/landscape.obj");
     geometry = std::make_unique<ew::Shader>("assets/shaders/deferred/geometry.vs", "assets/shaders/deferred/geometry.fs");
     water = std::make_unique<ew::Shader>("assets/shaders/deferred/water.vs", "assets/shaders/deferred/water.fs");
+    reflection_shader = std::make_unique<ew::Shader>("assets/shaders/deferred/geometry.vs", "assets/shaders/deferred/reflection.fs");
     blinnphong = std::make_unique<ew::Shader>("assets/shaders/deferred/blinnphong.vs", "assets/shaders/deferred/blinnphong.fs");
     noprocess = std::make_unique<ew::Shader>("assets/shaders/deferred/fullscreen.vs", "assets/shaders/deferred/fullscreen.fs");
     lightsphere = std::make_unique<ew::Shader>("assets/shaders/deferred/light.vs", "assets/shaders/deferred/light.fs");
@@ -204,6 +238,8 @@ Scene::Scene()
 
     framebuffer.Initialize();
     lightvolumebuffer.Initialize();
+    reflectionbuffer.Initialize();
+    refractionbuffer.Initialize();
     fullscreen_quad.Initialize();
 
     InitializeInstanceData();
@@ -246,45 +282,102 @@ void Scene::Render(void)
 {
     const auto view_proj = camera.Projection() * camera.View();
 
-    // render gbuffer
+    const glm::mat4 land_model  = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f)), glm::vec3(3.0f));
+    const glm::mat4 plane_model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, water_y, 0.0f));
+
+    //water
+    {
+        glm::mat4 view = camera.View();
+        glm::vec3 forward = -glm::vec3(view[0][2], view[1][2], view[2][2]);
+        glm::vec3 ref_pos = {camera.position.x, 2.0f * water_y - camera.position.y, camera.position.z};
+        glm::vec3 ref_fwd = {forward.x, -forward.y, forward.z};
+        glm::mat4 ref_view_proj = camera.Projection() * glm::lookAt(ref_pos, ref_pos + ref_fwd, {0.0f, 1.0f, 0.0f});
+
+        // Reflection
+        glBindFramebuffer(GL_FRAMEBUFFER, reflectionbuffer.fbo);
+        glEnable(GL_CLIP_DISTANCE0);
+        glDisable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_FRONT);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        reflection_shader->use();
+        reflection_shader->setMat4("view_proj", ref_view_proj);
+        reflection_shader->setVec4("clip_plane", glm::vec4(0.0f, 1.0f, 0.0f, -water_y));
+        reflection_shader->setMat4("model", glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, suzanne_y, 0.0f)));
+        suzanne->draw();
+        reflection_shader->setMat4("model", land_model);
+        Land->draw();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    // Refraction
+    glBindFramebuffer(GL_FRAMEBUFFER, refractionbuffer.fbo);
+    glEnable(GL_CLIP_DISTANCE0);
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    reflection_shader->use();
+    reflection_shader->setMat4("view_proj", view_proj);
+    reflection_shader->setVec4("clip_plane", glm::vec4(0.0f, -1.0f, 0.0f, water_y));
+    reflection_shader->setMat4("model", glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, suzanne_y, 0.0f)));
+    suzanne->draw();
+    reflection_shader->setMat4("model", land_model);
+    Land->draw();
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    glDisable(GL_CLIP_DISTANCE0);
+
+    // G-buffer pass
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.fbo);
     {
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
-
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         geometry->use();
         geometry->setMat4("view_proj", view_proj);
+        geometry->setVec4("clip_plane", glm::vec4(0.0f, 1.0f, 0.0f, 99999.0f));
         geometry->setFloat("material.ambient", material.ambient);
         geometry->setFloat("material.diffuse", material.diffuse);
         geometry->setFloat("material.specular", material.specular);
         geometry->setFloat("material.shininess", material.shininess);
 
-        // Draw one Suzanne at the origin
-        geometry->setMat4("model", glm::mat4(1.0f));
+        geometry->setMat4("model", glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, suzanne_y, 0.0f)));
         suzanne->draw();
-
-        glm::mat4 land_model = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)), glm::vec3(3.0f));
         geometry->setMat4("model", land_model);
         Land->draw();
 
+        // Water plane
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, reflectionbuffer.color);
+        glActiveTexture(GL_TEXTURE5);
+        glBindTexture(GL_TEXTURE_2D, refractionbuffer.color);
+
         water->use();
         water->setMat4("view_proj", view_proj);
+        water->setVec3("camera_position", camera.position);
+        water->setInt("reflection_map", 4);
+        water->setInt("refraction_map", 5);
         water->setFloat("material.ambient", 0.3f);
         water->setFloat("material.diffuse", 0.6f);
         water->setFloat("material.specular", 0.9f);
         water->setFloat("material.shininess", 0.9f);
-        glm::mat4 plane_model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.521f, 0.0f));
         water->setMat4("model", plane_model);
         plane.draw();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // lighting pass - one fullscreen quad per light, additive blending
+    // lighting
     glBindFramebuffer(GL_FRAMEBUFFER, lightvolumebuffer.fbo);
     {
         glEnable(GL_BLEND);
@@ -369,6 +462,8 @@ void Scene::Debug(void)
 
     ImGui::Checkbox("Paused", &time.paused);
     ImGui::SliderFloat("Time Factor", &time.factor, 0.0f, 10.0f);
+    ImGui::SliderFloat("Water Y", &water_y, -10.0f, 10.0f);
+    ImGui::SliderFloat("Suzanne Y", &suzanne_y, -10.0f, 10.0f);
 
     if (ImGui::SliderInt("Width", &debug.width, 1, 100))
     {

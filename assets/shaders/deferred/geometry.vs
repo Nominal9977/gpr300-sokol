@@ -8,6 +8,7 @@ layout(location = 2) in vec2 in_texcoord;
 // uniforms
 uniform mat4 view_proj;
 uniform mat4 model;
+uniform vec4 clip_plane;
 
 // varyings
 out vec3 vs_position;
@@ -23,5 +24,6 @@ void main()
     vs_normal = world_normal;
     vs_texcoord = in_texcoord;
 
+    gl_ClipDistance[0] = dot(world_position, clip_plane);
     gl_Position = view_proj * world_position;
 }

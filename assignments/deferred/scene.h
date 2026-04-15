@@ -30,6 +30,7 @@ class Scene final : public batteries::Scene
     std::unique_ptr<ew::Model> Land;
     std::unique_ptr<ew::Shader> geometry;
     std::unique_ptr<ew::Shader> water;
+    std::unique_ptr<ew::Shader> reflection_shader;
     std::unique_ptr<ew::Shader> blinnphong;
     std::unique_ptr<ew::Shader> noprocess;
     std::unique_ptr<ew::Shader> lightsphere;
@@ -39,6 +40,9 @@ class Scene final : public batteries::Scene
     batteries::light_t light;
     ew::Mesh sphere;
     ew::Mesh plane;
+
+    float water_y   = 0.521f;
+    float suzanne_y = 2.0f;
 
     std::vector<batteries::light_t> light_instances;
 };
