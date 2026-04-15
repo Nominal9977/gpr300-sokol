@@ -27,6 +27,7 @@ class Scene final : public batteries::Scene
 
   private:
     std::unique_ptr<ew::Model> suzanne;
+    std::unique_ptr<ew::Model> Land;
     std::unique_ptr<ew::Shader> geometry;
     std::unique_ptr<ew::Shader> blinnphong;
     std::unique_ptr<ew::Shader> noprocess;
@@ -37,6 +38,5 @@ class Scene final : public batteries::Scene
     batteries::light_t light;
     ew::Mesh sphere;
 
-    std::vector<glm::mat4> model_instances;
     std::vector<batteries::light_t> light_instances;
 };

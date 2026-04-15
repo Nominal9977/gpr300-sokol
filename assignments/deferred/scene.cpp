@@ -187,6 +187,7 @@ struct
 Scene::Scene()
 {
     suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
+    Land = std::make_unique<ew::Model>("assets/models/landscape.obj");
     geometry = std::make_unique<ew::Shader>("assets/shaders/deferred/geometry.vs", "assets/shaders/deferred/geometry.fs");
     blinnphong = std::make_unique<ew::Shader>("assets/shaders/deferred/blinnphong.vs", "assets/shaders/deferred/blinnphong.fs");
     noprocess = std::make_unique<ew::Shader>("assets/shaders/deferred/fullscreen.vs", "assets/shaders/deferred/fullscreen.fs");
@@ -214,7 +215,6 @@ void Scene::InitializeInstanceData(void)
 {
     auto width = debug.width;
     auto size = (width - (-width) + 1) * (width - (-width) + 1);
-    model_instances.resize(size);
     light_instances.resize(size);
 
     auto i = 0;
@@ -231,9 +231,6 @@ void Scene::InitializeInstanceData(void)
                 .color = batteries::random_color(),
                 .position = glm::vec4(position, 1.0f) + orbit  * orbit_radius,
             };
-
-            // model instances
-            model_instances[i] = batteries::random_model_matrix(position);
         }
     }
 }
@@ -265,17 +262,14 @@ void Scene::Render(void)
         geometry->setFloat("material.specular", material.specular);
         geometry->setFloat("material.shininess", material.shininess);
 
-        auto i = 0;
-        for (auto x = -debug.width; x <= debug.width; x++)
-        {
-            for (auto y = -debug.width; y <= debug.width; y++, i++)
-            {
-                geometry->setMat4("model", model_instances[i]);
+        // Draw one Suzanne at the origin
+        geometry->setMat4("model", glm::mat4(1.0f));
+        suzanne->draw();
 
-                // Draw the object
-                suzanne->draw();
-            }
-        }
+        // Draw land flat at ground level
+        glm::mat4 land_model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f));
+        geometry->setMat4("model", land_model);
+        Land->draw();
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
