@@ -2,4 +2,4 @@ set(ASSIGNMENT_FILES
     scene.cpp
     scene.h)
 
-add_assignment(deferred "${ASSIGNMENT_FILES}")
+add_assignment(Final "${ASSIGNMENT_FILES}")
