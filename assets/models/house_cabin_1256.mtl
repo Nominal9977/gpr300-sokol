@@ -1,0 +1,102 @@
+newmtl house_cabin_1256_grey_MatSG
+Ni 1.5
+Ka 0 0 0
+d 1.0
+Ke 0.0
+Kd 0 0 0
+adobe_map_normal house_cabin_1256/house_cabin_1256_grey_MatSG_normal.png
+Tr 0
+illum 7
+Ks 1 1 1
+adobe_translucence 0.0
+adobe_map_roughness house_cabin_1256/house_cabin_1256_grey_MatSG_roughness.png
+adobe_interior_color 1.0 1.0 1.0
+adobe_density 0.0
+map_Pm house_cabin_1256/house_cabin_1256_grey_MatSG_metallic.png
+Ns 16
+map_Kd house_cabin_1256/house_cabin_1256_grey_Mat_baseColor.png
+newmtl house_cabin_1256_glass_MatSG
+Ni 1.5
+Ka 0 0 0
+d 1.0
+Ke 0.0
+Kd 0 0 0
+adobe_map_normal house_cabin_1256/house_cabin_1256_glass_MatSG_normal.png
+Tr 0
+illum 7
+Ks 1 1 1
+adobe_translucence 0.0
+adobe_map_roughness house_cabin_1256/house_cabin_1256_glass_MatSG_roughness.png
+adobe_interior_color 1.0 1.0 1.0
+adobe_density 0.0
+map_Pm house_cabin_1256/house_cabin_1256_glass_MatSG_metallic.png
+Ns 16
+map_Kd house_cabin_1256/house_cabin_1256_glass_Mat_baseColor.png
+newmtl house_cabin_1256_brown_wood_MatSG
+Ni 1.5
+Ka 0 0 0
+d 1.0
+Ke 0.0
+Kd 0 0 0
+adobe_map_normal house_cabin_1256/house_cabin_1256_brown_wood_MatSG_normal.png
+Tr 0
+illum 7
+Ks 1 1 1
+adobe_translucence 0.0
+adobe_map_roughness house_cabin_1256/house_cabin_1256_brown_wood_MatSG_roughness.png
+adobe_interior_color 1.0 1.0 1.0
+adobe_density 0.0
+map_Pm house_cabin_1256/house_cabin_1256_brown_wood_MatSG_metallic.png
+Ns 16
+map_Kd house_cabin_1256/house_cabin_1256_brown_wood_Mat_baseColor.png
+newmtl house_cabin_1256_Green_MatSG
+Ni 1.5
+Ka 0 0 0
+d 1.0
+Ke 0.0
+Kd 0 0 0
+adobe_map_normal house_cabin_1256/house_cabin_1256_Green_MatSG_normal.png
+Tr 0
+illum 7
+Ks 1 1 1
+adobe_translucence 0.0
+adobe_map_roughness house_cabin_1256/house_cabin_1256_Green_MatSG_roughness.png
+adobe_interior_color 1.0 1.0 1.0
+adobe_density 0.0
+map_Pm house_cabin_1256/house_cabin_1256_Green_MatSG_metallic.png
+Ns 16
+map_Kd house_cabin_1256/house_cabin_1256_Green_Mat_baseColor.png
+newmtl house_cabin_1256_cream_MatSG
+Ni 1.5
+Ka 0 0 0
+d 1.0
+Ke 0.0
+Kd 0 0 0
+adobe_map_normal house_cabin_1256/house_cabin_1256_cream_MatSG_normal.png
+Tr 0
+illum 7
+Ks 1 1 1
+adobe_translucence 0.0
+adobe_map_roughness house_cabin_1256/house_cabin_1256_cream_MatSG_roughness.png
+adobe_interior_color 1.0 1.0 1.0
+adobe_density 0.0
+map_Pm house_cabin_1256/house_cabin_1256_cream_MatSG_metallic.png
+Ns 16
+map_Kd house_cabin_1256/house_cabin_1256_cream_Mat_baseColor.png
+newmtl house_cabin_1256_roofGrey_MatSG
+Ni 1.5
+Ka 0 0 0
+d 1.0
+Ke 0.0
+Kd 0 0 0
+adobe_map_normal house_cabin_1256/house_cabin_1256_roofGrey_MatSG_normal.png
+Tr 0
+illum 7
+Ks 1 1 1
+adobe_translucence 0.0
+adobe_map_roughness house_cabin_1256/house_cabin_1256_roofGrey_MatSG_roughness.png
+adobe_interior_color 1.0 1.0 1.0
+adobe_density 0.0
+map_Pm house_cabin_1256/house_cabin_1256_roofGrey_MatSG_metallic.png
+Ns 16
+map_Kd house_cabin_1256/house_cabin_1256_roofGrey_Mat_baseColor.png
