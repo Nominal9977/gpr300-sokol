@@ -1,10 +1,11 @@
 #version 410
 
+
 precision mediump float;
 
 out vec4 frag_color;
 
-uniform vec3 color;
+uniform vec3 color; 
 
 void main()
 {

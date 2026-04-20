@@ -1,2 +1,2 @@
 # assignments
-add_subdirectory(Final)
+add_subdirectory(Final_Project)

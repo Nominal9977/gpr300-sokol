@@ -344,26 +344,26 @@ struct
 Scene::Scene()
 {
     suzanne = std::make_unique<ew::Model>("assets/models/suzanne.obj");
-    Land    = std::make_unique<ew::Model>("assets/models/landscape.obj");
-    tree    = std::make_unique<ew::Model>("assets/models/plant_pine_tree.obj");
+    Land = std::make_unique<ew::Model>("assets/models/landscape.obj");
+    tree = std::make_unique<ew::Model>("assets/models/plant_pine_tree.obj");
 
     house_model.load("assets/models/house_cabin_1256.obj");
     {
         const std::string source = "assets/shaders/house_cabin/";
-        house_model.addTexture("house_cabin_1256_grey_MatSG",       source + "house_cabin_1256_grey_Mat_baseColor.png");
-        house_model.addTexture("house_cabin_1256_glass_MatSG",      source + "house_cabin_1256_glass_Mat_baseColor.png");
+        house_model.addTexture("house_cabin_1256_grey_MatSG", source + "house_cabin_1256_grey_Mat_baseColor.png");
+        house_model.addTexture("house_cabin_1256_glass_MatSG", source + "house_cabin_1256_glass_Mat_baseColor.png");
         house_model.addTexture("house_cabin_1256_brown_wood_MatSG", source + "house_cabin_1256_brown_wood_Mat_baseColor.png");
-        house_model.addTexture("house_cabin_1256_Green_MatSG",      source + "house_cabin_1256_Green_Mat_baseColor.png");
-        house_model.addTexture("house_cabin_1256_cream_MatSG",      source + "house_cabin_1256_cream_Mat_baseColor.png");
-        house_model.addTexture("house_cabin_1256_roofGrey_MatSG",   source + "house_cabin_1256_roofGrey_Mat_baseColor.png");
+        house_model.addTexture("house_cabin_1256_Green_MatSG", source + "house_cabin_1256_Green_Mat_baseColor.png");
+        house_model.addTexture("house_cabin_1256_cream_MatSG", source + "house_cabin_1256_cream_Mat_baseColor.png");
+        house_model.addTexture("house_cabin_1256_roofGrey_MatSG", source + "house_cabin_1256_roofGrey_Mat_baseColor.png");
     }
 
 
-    geometry = std::make_unique<ew::Shader>("assets/shaders/Final/geometry.vs", "assets/shaders/Final/geometry.fs");
-    water = std::make_unique<ew::Shader>("assets/shaders/Final/water.vs", "assets/shaders/Final/water.fs");
-    reflection_shader = std::make_unique<ew::Shader>("assets/shaders/Final/geometry.vs", "assets/shaders/Final/reflection.fs");
-    blinnphong = std::make_unique<ew::Shader>("assets/shaders/Final/blinnphong.vs", "assets/shaders/Final/blinnphong.fs");
-    fullScreen = std::make_unique<ew::Shader>("assets/shaders/Final/fullscreen.vs", "assets/shaders/Final/fullscreen.fs");
+    geometry = std::make_unique<ew::Shader>("assets/shaders/Final_Project/geometry.vs", "assets/shaders/Final_Project/geometry.fs");
+    water = std::make_unique<ew::Shader>("assets/shaders/Final_Project/water.vs", "assets/shaders/Final_Project/water.fs");
+    reflection_shader = std::make_unique<ew::Shader>("assets/shaders/Final_Project/geometry.vs", "assets/shaders/Final_Project/reflection.fs");
+    blinnphong = std::make_unique<ew::Shader>("assets/shaders/Final_Project/blinnphong.vs", "assets/shaders/Final_Project/blinnphong.fs");
+    fullScreen = std::make_unique<ew::Shader>("assets/shaders/Final_Project/fullscreen.vs", "assets/shaders/Final_Project/fullscreen.fs");
     plane.load(ew::createPlane(60.0f, 60.0f, 1));
     wave_tex  = std::make_unique<ew::Texture>("assets/doubledash/wave_tex.png");
     wave_warp = std::make_unique<ew::Texture>("assets/doubledash/wave_warp.png");
