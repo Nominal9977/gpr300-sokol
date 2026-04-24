@@ -347,6 +347,7 @@ Scene::Scene()
     Land = std::make_unique<ew::Model>("assets/models/landscape.obj");
     tree = std::make_unique<ew::Model>("assets/models/plant_pine_tree.obj");
 
+    // LOAD DE HOUSEEEE (fuck multi-texturing)
     house_model.load("assets/models/house_cabin_1256.obj");
     {
         const std::string source = "assets/shaders/house_cabin/";
@@ -359,6 +360,7 @@ Scene::Scene()
     }
 
 
+    // Setup The Shaders
     geometry = std::make_unique<ew::Shader>("assets/shaders/Final_Project/geometry.vs", "assets/shaders/Final_Project/geometry.fs");
     water = std::make_unique<ew::Shader>("assets/shaders/Final_Project/water.vs", "assets/shaders/Final_Project/water.fs");
     reflection_shader = std::make_unique<ew::Shader>("assets/shaders/Final_Project/geometry.vs", "assets/shaders/Final_Project/reflection.fs");
@@ -375,6 +377,7 @@ Scene::Scene()
         .color = {0.5f, 0.5f, 0.5f},
     };
 
+    // Initialize Buffers
     framebuffer.Initialize();
     lightvolumebuffer.Initialize();
     reflectionbuffer.Initialize();
@@ -461,7 +464,7 @@ void Scene::Render(void)
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_FRONT);
-        //uses sky color so empty regions blend naturally
+        //uses sky color so empty regions blend naturally (why didnt we start with this)
         glClearColor(sky_r, sky_g, sky_b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
