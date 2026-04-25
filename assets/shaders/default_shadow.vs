@@ -18,7 +18,6 @@ void main()
     vs_position = vec3(model * vec4(aPos, 1.0));
 
     vs_normal = aNormal;
-    //vs_texcoord = aUV;
 
     vs_light_proj_pos = light_view_proj * vec4(vs_position, 1.0);
     gl_Position = view_proj* vec4(vs_position, 1.0);

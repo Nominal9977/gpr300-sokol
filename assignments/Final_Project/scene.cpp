@@ -157,6 +157,7 @@ void TexturedModel::draw(ew::Shader* shader) const
 
 constexpr int kFramebufferWidth = 800;
 constexpr int kFramebufferHeight = 600;
+constexpr int kShadowSize = 2048;
 constexpr float orbit_radius = 2.0f;
 
 
@@ -211,10 +212,10 @@ struct Framebuffer
         glGenFramebuffers(1, &fbo);
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-        // position attachment
+        // position attachment - needs float precision for world-space coords
         glGenTextures(1, &position);
         glBindTexture(GL_TEXTURE_2D, position);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, kFramebufferWidth, kFramebufferHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, kFramebufferWidth, kFramebufferHeight, 0, GL_RGBA, GL_FLOAT, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, position, 0);
@@ -326,6 +327,37 @@ struct WaterBuffer
 } reflectionbuffer, refractionbuffer;
 
 
+struct ShadowBuffer
+{
+    GLuint fbo;
+    GLuint depth;
+
+    void Initialize()
+    {
+        glGenFramebuffers(1, &fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+        glGenTextures(1, &depth);
+        glBindTexture(GL_TEXTURE_2D, depth);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, kShadowSize, kShadowSize, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        float border[] = {1.0f, 1.0f, 1.0f, 1.0f};
+        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
+        glDrawBuffers(0, nullptr);
+        glReadBuffer(GL_NONE);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            printf("Shadow framebuffer incomplete\n");
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+} shadowbuffer;
+
 struct Material
 {
     float ambient = 1.0f;
@@ -363,6 +395,7 @@ Scene::Scene()
     // Setup The Shaders
     geometry = std::make_unique<ew::Shader>("assets/shaders/Final_Project/geometry.vs", "assets/shaders/Final_Project/geometry.fs");
     water = std::make_unique<ew::Shader>("assets/shaders/Final_Project/water.vs", "assets/shaders/Final_Project/water.fs");
+    depth_shader = std::make_unique<ew::Shader>("assets/shaders/depth.vs", "assets/shaders/depth.fs");
     reflection_shader = std::make_unique<ew::Shader>("assets/shaders/Final_Project/geometry.vs", "assets/shaders/Final_Project/reflection.fs");
     blinnphong = std::make_unique<ew::Shader>("assets/shaders/Final_Project/blinnphong.vs", "assets/shaders/Final_Project/blinnphong.fs");
     fullScreen = std::make_unique<ew::Shader>("assets/shaders/Final_Project/fullscreen.vs", "assets/shaders/Final_Project/fullscreen.fs");
@@ -371,6 +404,7 @@ Scene::Scene()
     wave_warp = std::make_unique<ew::Texture>("assets/doubledash/wave_warp.png");
     tree_tex = std::make_unique<ew::Texture>("assets/shaders/plant_pine_tree/plant_pine_tree_abstract_baseColor.png");
     land_tex = std::make_unique<ew::Texture>("assets/textures/Brick.png");
+    
 
     ambient = {
         .intensity = 1.0f,
@@ -383,6 +417,7 @@ Scene::Scene()
     reflectionbuffer.Initialize();
     refractionbuffer.Initialize();
     fullscreen_quad.Initialize();
+    shadowbuffer.Initialize();
 
     InitializeInstanceData();
 }
@@ -423,7 +458,7 @@ void Scene::Render(void)
 {
     const auto view_proj = camera.Projection() * camera.View();
 
-    const glm::mat4 land_model  = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f)), glm::vec3(3.0f));
+    const glm::mat4 land_model = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f)), glm::vec3(3.0f));
     const glm::mat4 plane_model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, water_y, 0.0f));
 
     //sun direction
@@ -439,6 +474,42 @@ void Scene::Render(void)
     // blend to sky
     constexpr float sky_r = 0.53f, sky_g = 0.81f, sky_b = 0.98f;
 
+    // Light-space matrix for shadow mapping - ortho from sun direction looking at scene center
+    const glm::vec3 shadow_up = (glm::abs(sun_dir.y) < 0.99f) ? glm::vec3(0, 1, 0) : glm::vec3(0, 0, 1);
+    const glm::mat4 light_view = glm::lookAt(sun_dir * 50.0f, glm::vec3(0.0f, 3.0f, 0.0f), shadow_up);
+    const glm::mat4 light_proj = glm::ortho(-40.0f, 40.0f, -40.0f, 40.0f, 1.0f, 200.0f);
+    const glm::mat4 light_view_proj = light_proj * light_view;
+
+    // Shadow pass
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, shadowbuffer.fbo);
+        glViewport(0, 0, kShadowSize, kShadowSize);
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+        glClear(GL_DEPTH_BUFFER_BIT);
+
+        depth_shader->use();
+        depth_shader->setMat4("light_view_proj", light_view_proj);
+
+        depth_shader->setMat4("model", glm::translate(glm::mat4(1.0f), suzanne_pos));
+        suzanne->draw();
+
+        depth_shader->setMat4("model", land_model);
+        Land->draw();
+
+        depth_shader->setMat4("model", glm::scale(glm::translate(glm::mat4(1.0f), house_pos), glm::vec3(house_scale)));
+        house_model.draw(depth_shader.get());
+
+        for (const auto& pos : tree_positions) {
+            depth_shader->setMat4("model", glm::scale(glm::translate(glm::mat4(1.0f), pos), glm::vec3(tree_scale)));
+            tree->draw();
+        }
+
+        glViewport(0, 0, kFramebufferWidth, kFramebufferHeight);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
     // Compute reflected camera
     glm::mat4 ref_view_proj;
     {
@@ -450,7 +521,7 @@ void Scene::Render(void)
         glm::vec3 forward = -glm::vec3(view[0][2], view[1][2], view[2][2]);
         glm::vec3 ref_fwd = {forward.x, -forward.y, forward.z};
 
-        glm::vec3 ref_up  = {cam_up.x, -cam_up.y, cam_up.z};
+        glm::vec3 ref_up = {cam_up.x, -cam_up.y, cam_up.z};
 
         ref_view_proj = camera.Projection() *
             glm::lookAt(ref_pos, ref_pos + ref_fwd, ref_up);
@@ -464,7 +535,6 @@ void Scene::Render(void)
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_FRONT);
-        //uses sky color so empty regions blend naturally (why didnt we start with this)
         glClearColor(sky_r, sky_g, sky_b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -498,13 +568,14 @@ void Scene::Render(void)
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+        //refaction pass
         glBindFramebuffer(GL_FRAMEBUFFER, refractionbuffer.fbo);
         glEnable(GL_CLIP_DISTANCE0);
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
-        glClearColor(sky_r, sky_g, sky_b, 1.0f);
+        glClearColor(fog_color.r, fog_color.g, fog_color.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         reflection_shader->use();
@@ -565,9 +636,18 @@ void Scene::Render(void)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, land_tex->getID());
 
+        geometry->setFloat("material.ambient",   terrain_material.ambient);
+        geometry->setFloat("material.diffuse",   terrain_material.diffuse);
+        geometry->setFloat("material.specular",  terrain_material.specular);
+        geometry->setFloat("material.shininess", terrain_material.shininess);
         geometry->setInt("has_texture", 1);
         geometry->setMat4("model", land_model);
         Land->draw();
+
+        geometry->setFloat("material.ambient",   material.ambient);
+        geometry->setFloat("material.diffuse",   material.diffuse);
+        geometry->setFloat("material.specular",  material.specular);
+        geometry->setFloat("material.shininess", material.shininess);
 
         geometry->setMat4("model", glm::scale(glm::translate(glm::mat4(1.0f), house_pos), glm::vec3(house_scale)));
         house_model.draw(geometry.get());
@@ -606,6 +686,7 @@ void Scene::Render(void)
         water->setVec3("fog_color", fog_color);
         water->setFloat("fog_max_depth", fog_max_depth);
         water->setFloat("fresnel_F0", fresnel);
+        water->setFloat("refraction_strength", refraction_strength);
         water->setVec3("sun_dir", sun_dir);
         water->setVec3("sun_color", sun_color);
         water->setFloat("sun_intensity", sun_intensity);
@@ -664,6 +745,11 @@ void Scene::Render(void)
         fullScreen->setInt("screen", 0);
         fullScreen->setInt("g_albedo", 1);
         fullScreen->setInt("g_normal", 2);
+        fullScreen->setInt("g_position", 3);
+        fullScreen->setInt("shadow_map", 4);
+        fullScreen->setInt("g_material", 5);
+        fullScreen->setMat4("light_view_proj", light_view_proj);
+        fullScreen->setVec3("camera_position", camera.position);
         fullScreen->setVec3("ambient_color", ambient.color);
         fullScreen->setFloat("ambient_strength", ambient.intensity);
         fullScreen->setVec3("sky_color", glm::vec3(sky_r, sky_g, sky_b));
@@ -686,6 +772,12 @@ void Scene::Render(void)
         glBindTexture(GL_TEXTURE_2D, framebuffer.albedo);
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_2D, framebuffer.normal);
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, framebuffer.position);
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, shadowbuffer.depth);
+        glActiveTexture(GL_TEXTURE5);
+        glBindTexture(GL_TEXTURE_2D, framebuffer.material);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         glBindFramebuffer(GL_READ_FRAMEBUFFER, framebuffer.fbo);
@@ -713,7 +805,8 @@ void Scene::Debug(void)
         ImGui::ColorEdit3("Fog Color",  &fog_color.r);
         ImGui::SliderFloat("Fog Depth", &fog_max_depth,   0.1f, 20.0f);
         ImGui::Separator();
-        ImGui::SliderFloat("Reflectiveness", &fresnel, 0.0f, 1.0f);
+        ImGui::SliderFloat("Reflectiveness",       &fresnel,             0.0f, 1.0f);
+        ImGui::SliderFloat("Refraction Strength",  &refraction_strength, 0.0f, 5.0f);
     }
 
     if (ImGui::CollapsingHeader("Sun"))
@@ -722,6 +815,14 @@ void Scene::Debug(void)
         ImGui::SliderFloat("Sun hight",     &sun_elevation, 0.0f,  90.0f);
         ImGui::ColorEdit3("Color",       &sun_color.r);
         ImGui::SliderFloat("Brightness", &sun_intensity, 0.0f,   2.0f);
+    }
+
+    if (ImGui::CollapsingHeader("Terrain"))
+    {
+        ImGui::SliderFloat("Ambient",   &terrain_material.ambient,   0.0f, 1.0f);
+        ImGui::SliderFloat("Diffuse",   &terrain_material.diffuse,   0.0f, 1.0f);
+        ImGui::SliderFloat("Specular",  &terrain_material.specular,  0.0f, 1.0f);
+        ImGui::SliderFloat("Shininess", &terrain_material.shininess, 0.0f, 1.0f);
     }
 
     if (ImGui::CollapsingHeader("Geometry Buffer"))
